@@ -1,0 +1,111 @@
+# Capability → Tools Mapping
+# Squads: lead-hunter + sales-closer
+# Generated: 2026-02-18
+
+version: "1.0"
+squads: [lead-hunter, sales-closer]
+
+capabilities:
+  whatsapp_messaging:
+    squads: [lead-hunter, sales-closer]
+    tier_1:
+      - name: Evolution API
+        url: https://github.com/EvolutionAPI/evolution-api
+        type: github_project
+        install: "docker pull atendai/evolution-api"
+        cost: "$10-50/mo (VPS)"
+        flag: "🟡 UNOFFICIAL_API"
+        status: recommended_mvp
+    tier_2:
+      - name: WAHA
+        url: https://github.com/devlikeapro/waha
+        type: github_project
+        install: "docker pull devlikeapro/waha"
+        cost: "$5-20/mo (VPS)"
+        flag: "🟡 UNOFFICIAL_API"
+        status: alternative
+      - name: Twilio Conversations API
+        url: https://twilio.com/docs/conversations
+        type: api
+        install: "pip install twilio"
+        cost: "$0.004-0.05/message"
+        status: recommended_scale
+
+  google_maps_scraping:
+    squads: [lead-hunter]
+    tier_1:
+      - name: Google Maps Platform - Places API
+        url: https://developers.google.com/maps/documentation/places
+        type: api
+        install: "pip install googlemaps"
+        cost: "$200/mo free credit"
+        status: recommended_mvp
+    tier_4:
+      - name: SerpAPI
+        url: https://serpapi.com
+        type: api
+        cost: "$50/mo (5000 searches)"
+        flag: "🔴 TOS_VIOLATION"
+        status: avoid
+
+  supabase_integration:
+    squads: [lead-hunter, sales-closer]
+    already_active:
+      - name: supabase-py
+        install: "pip install supabase"
+        status: active
+      - name: psycopg2
+        install: "pip install psycopg2-binary"
+        status: active
+
+  calendar_scheduling:
+    squads: [sales-closer]
+    tier_2:
+      - name: Calendly API
+        url: https://developer.calendly.com/api-docs
+        type: api
+        install: "npm install @calendly/calendar"
+        cost: "$0 free / $12/mo Pro"
+        status: recommended_mvp
+      - name: Google Calendar API v3
+        url: https://developers.google.com/calendar/api
+        type: api
+        install: "pip install google-api-python-client"
+        cost: "free"
+        status: alternative
+
+  contact_data_enrichment:
+    squads: [lead-hunter]
+    tier_1:
+      - name: Hunter.io API
+        url: https://hunter.io/api
+        type: api
+        install: "pip install hunter"
+        cost: "100 free/mo, $99/mo paid"
+        status: recommended_mvp
+    tier_2:
+      - name: Apollo.io API
+        url: https://apollo.io/api/docs
+        type: api
+        cost: "100 free credits, $49/mo"
+        status: recommended_scale
+
+  follow_up_automation:
+    squads: [sales-closer]
+    tier_1:
+      - name: APScheduler
+        url: https://github.com/agronholm/apscheduler
+        type: library
+        install: "pip install APScheduler"
+        cost: "free"
+        status: recommended_mvp
+    tier_1_combo:
+      - description: "Evolution API + APScheduler (DIY)"
+        components: [Evolution API, APScheduler, supabase-py]
+        cost: "$10-50/mo VPS"
+        status: recommended_mvp
+    tier_2:
+      - name: Twilio Conversations
+        type: api
+        cost: "$0.007/SMS"
+        status: recommended_scale

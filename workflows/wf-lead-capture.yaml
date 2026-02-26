@@ -1,0 +1,403 @@
+# WF-1: Lead Capture Pipeline
+# Duration: 4-8 hours per batch
+# Best for: Automated lead generation from Google Maps with WhatsApp outreach
+# Key Agents: hunter-chief, lead-qualifier, google-maps-hunter, message-crafter, scheduler
+
+workflow:
+  id: wf-lead-capture
+  name: "Lead Capture Pipeline"
+  duration: "4-8 hours per batch"
+  description: |
+    End-to-end automated lead generation pipeline.
+    Captures leads from Google Maps, extracts website context,
+    crafts personalized messages, and dispatches via WhatsApp
+    within business hours (9h-17h BRT).
+
+    This workflow produces:
+    - Qualified leads in Supabase
+    - Personalized WhatsApp messages sent
+    - Response monitoring active
+    - Handoff packages for sales-closer squad
+
+  best_for:
+    - "New lead generation campaigns"
+    - "Batch prospecting for specific ICP"
+    - "Automated outreach at scale"
+
+  clone_combinations:
+    primary: "hunter-chief (orchestrator)"
+    secondary:
+      - "lead-qualifier (Trish Bertuzzi - qualification)"
+      - "google-maps-hunter (Aaron Ross - prospecting)"
+      - "message-crafter (Gary Halbert + Alex Hormozi - messaging)"
+      - "context-analyst (intelligence extraction)"
+      - "scheduler (dispatch automation)"
+      - "database-manager (Supabase operations)"
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# PHASE 1: ICP DEFINITION & QUALIFICATION (Day 0)
+# ═══════════════════════════════════════════════════════════════════════════════
+phases:
+  - id: PHASE-1
+    name: "ICP Definition & Qualification Setup"
+    days: "0"
+    tier: 0
+    description: |
+      Define Ideal Customer Profile criteria before any capture begins.
+      Lead Qualifier gates quality — no leads enter pipeline without
+      passing the 30-point ICP scoring framework.
+
+    tasks:
+      - task_file: tasks/qualify-lead.md
+        agent: lead-qualifier
+        required: true
+        description: "Define ICP criteria, scoring thresholds, and qualification rules"
+        output: "ICP definition stored in session context"
+
+    checkpoint:
+      criteria:
+        - "ICP criteria defined with min 3 dimensions (industry, size, location)"
+        - "Scoring threshold set (default >= 21/30)"
+        - "Disqualification rules documented"
+        - "Search query formulated for Google Maps"
+      human_review: true
+      message: "Review ICP criteria before starting capture. Confirm search query."
+      veto_condition: "ICP score threshold not defined → BLOCK capture"
+
+  # ═══════════════════════════════════════════════════════════════════════════════
+  # PHASE 2: LEAD CAPTURE (Day 0-1)
+  # ═══════════════════════════════════════════════════════════════════════════════
+  - id: PHASE-2
+    name: "Google Maps Lead Capture"
+    days: "0-1"
+    tier: 1
+    description: |
+      Execute Google Maps search with defined ICP query.
+      Capture: business name, phone, website, address, rating.
+      Apply data quality gate GMH_001 (phone required).
+      Store qualified leads in Supabase.
+
+    tasks:
+      - task_file: tasks/capture-leads.md
+        agent: google-maps-hunter
+        required: true
+        description: "Capture leads from Google Maps matching ICP query"
+        output: "leads table populated in Supabase"
+        notes: |
+          Heuristic GMH_001: Skip if no phone number
+          Heuristic GMH_002: Prioritize leads with website
+          Heuristic GMH_003: Deduplicate by phone number
+
+    checkpoint:
+      criteria:
+        - "Leads captured > 0"
+        - "All leads have phone number (GMH_001)"
+        - "Duplicate check passed (GMH_003)"
+        - "Leads saved to Supabase with status = 'new'"
+      human_review: false
+      message: "Lead capture complete. Proceeding to context extraction."
+      veto_condition: "0 leads captured → HALT pipeline, review search query"
+
+  # ═══════════════════════════════════════════════════════════════════════════════
+  # PHASE 3: CONTEXT EXTRACTION (Day 0-1)
+  # ═══════════════════════════════════════════════════════════════════════════════
+  - id: PHASE-3
+    name: "Website Context Extraction"
+    days: "0-1"
+    tier: 1
+    description: |
+      Extract intelligence from each lead's website.
+      Identify: services offered, pain points, company size, tech stack.
+      Context drives message personalization in Phase 4.
+      Auto-trigger LH_AT_002 watches for extraction failures.
+
+    tasks:
+      - task_file: tasks/extract-context.md
+        agent: context-analyst
+        required: true
+        description: "Scrape and analyze lead websites for actionable context"
+        output: "lead_context table populated in Supabase"
+
+    checkpoint:
+      criteria:
+        - "Context extracted for >= 80% of leads with websites"
+        - "At least 1 pain point identified per lead"
+        - "Context score >= 5/10 for each lead"
+        - "Failed extractions queued for retry (max 3)"
+      human_review: false
+      message: "Context extraction complete. Ready for message crafting."
+      veto_condition: "Context extraction rate < 50% → PAUSE, investigate failures"
+
+  # ═══════════════════════════════════════════════════════════════════════════════
+  # PHASE 4: MESSAGE CRAFTING (Day 1)
+  # ═══════════════════════════════════════════════════════════════════════════════
+  - id: PHASE-4
+    name: "Personalized Message Crafting"
+    days: "1"
+    tier: 1
+    description: |
+      Craft personalized WhatsApp messages using lead context.
+      Apply Value Equation (Hormozi) + Direct Response (Halbert).
+      Each message must pass quality gate MC_001 before queuing.
+
+    tasks:
+      - task_file: tasks/craft-message.md
+        agent: message-crafter
+        required: true
+        description: "Create personalized first-touch messages using context + frameworks"
+        output: "messages table populated, message_queue entries created"
+        notes: |
+          Heuristic MC_001: Personalization level >= 7/10
+          Heuristic MC_002: Message length 3-5 paragraphs
+          Heuristic MC_003: Must reference specific pain point
+
+    checkpoint:
+      criteria:
+        - "Message created for each lead with context"
+        - "Personalization score >= 7/10 (MC_001)"
+        - "No generic templates — each message references specific context"
+        - "Messages queued in message_queue with status = 'scheduled'"
+      human_review: true
+      message: "Review sample messages before dispatch. Check personalization quality."
+      veto_condition: "Personalization score < 5/10 on any message → REJECT, re-craft"
+
+  # ═══════════════════════════════════════════════════════════════════════════════
+  # PHASE 5: SCHEDULED DISPATCH (Day 1-2)
+  # ═══════════════════════════════════════════════════════════════════════════════
+  - id: PHASE-5
+    name: "Message Dispatch (Business Hours)"
+    days: "1-2"
+    tier: 2
+    description: |
+      Dispatch queued messages via WhatsApp API within business hours.
+      Enforce: 9h-17h BRT, max 30/hour, max 200/day.
+      Random delays 30-180s between messages (anti-detection).
+
+    tasks:
+      - task_file: tasks/schedule-dispatch.md
+        agent: scheduler
+        required: true
+        description: "Process message queue within time windows and rate limits"
+        output: "Messages sent, leads updated to status = 'sent'"
+
+    checkpoint:
+      criteria:
+        - "All queued messages dispatched within time window"
+        - "Rate limits respected (30/hr, 200/day)"
+        - "No messages sent outside 9h-17h BRT"
+        - "Lead status updated to 'sent' in Supabase"
+      human_review: false
+      message: "Dispatch complete. Response monitoring active."
+      veto_condition: "Rate limit exceeded → HALT dispatch, resume next window"
+
+  # ═══════════════════════════════════════════════════════════════════════════════
+  # PHASE 6: RESPONSE MONITORING & HANDOFF (Day 2+)
+  # ═══════════════════════════════════════════════════════════════════════════════
+  - id: PHASE-6
+    name: "Response Monitoring & Handoff"
+    days: "2+"
+    tier: 2
+    description: |
+      Monitor incoming WhatsApp responses (LH_AT_001).
+      Classify responses: positive, negative, question, neutral.
+      Positive responses trigger handoff to sales-closer squad.
+      Non-responders enter follow-up/archive lifecycle.
+
+    tasks:
+      - task_file: tasks/process-responses.md
+        agent: hunter-chief
+        required: true
+        description: "Monitor responses, classify sentiment, trigger handoffs"
+        output: "lead_responses table updated, handoff packages created"
+
+      - task_file: tasks/pipeline-report.md
+        agent: hunter-chief
+        required: false
+        description: "Generate daily pipeline report (LH_AT_005)"
+        output: "Pipeline metrics summary"
+
+    checkpoint:
+      criteria:
+        - "All responses classified within 2 hours"
+        - "Positive responses trigger handoff to sales-closer"
+        - "Handoff package includes: lead_profile, context_summary, response, qualification_score"
+        - "Non-responders queued for archive after 24h"
+      human_review: false
+      message: "Response cycle active. Handoffs to sales-closer triggered automatically."
+      veto_condition: "Handoff package incomplete → BLOCK handoff, complete data first"
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# ERROR HANDLING
+# ═══════════════════════════════════════════════════════════════════════════════
+error_handling:
+  on_phase_failure:
+    - log_error: true
+    - notify_stakeholders: true
+    - create_remediation_task: true
+    - halt_workflow: false
+
+  on_checkpoint_failure:
+    - log_failure_reason: true
+    - return_to_previous_phase: false
+    - max_retries: 3
+
+  specific_errors:
+    google_maps_api_failure:
+      detection: "0 results or API error"
+      recovery: "Retry with adjusted query, max 3 attempts"
+    whatsapp_api_failure:
+      detection: "Message send failure"
+      recovery: "Re-queue message, retry next window"
+    website_scrape_failure:
+      detection: "Timeout or blocked"
+      recovery: "Skip context, craft message with basic info only"
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# CHECKPOINT CONFIGURATION
+# ═══════════════════════════════════════════════════════════════════════════════
+checkpoint_config:
+  - phase: PHASE-1
+    heuristic: "LQ_001"
+    criteria: "ICP score threshold defined"
+    veto_condition: "No threshold → cannot start capture"
+
+  - phase: PHASE-2
+    heuristic: "GMH_001"
+    criteria: "All leads have phone numbers"
+    veto_condition: "0 leads → halt pipeline"
+
+  - phase: PHASE-3
+    heuristic: "LH_AT_002"
+    criteria: "Context extraction >= 80%"
+    veto_condition: "< 50% extraction rate → investigate"
+
+  - phase: PHASE-4
+    heuristic: "MC_001"
+    criteria: "Personalization >= 7/10"
+    veto_condition: "< 5/10 → reject message"
+
+  - phase: PHASE-5
+    heuristic: "SCH_001"
+    criteria: "Within time window and rate limits"
+    veto_condition: "Outside 9h-17h → halt"
+
+  - phase: PHASE-6
+    heuristic: "LH_HE_001"
+    criteria: "Response classified and routed"
+    veto_condition: "Incomplete handoff package → block"
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# COMPLETION SIGNALS
+# ═══════════════════════════════════════════════════════════════════════════════
+completion_signal: "<promise>COMPLETE</promise>"
+checkpoint_signal: "<promise>CHECKPOINT:PHASE-X</promise>"
+blocked_signal: "<promise>BLOCKED:T-X.Y</promise>"
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# OUTPUT ARTIFACTS
+# ═══════════════════════════════════════════════════════════════════════════════
+outputs:
+  supabase_tables:
+    - "leads (captured and qualified)"
+    - "lead_context (website intelligence)"
+    - "messages (crafted messages)"
+    - "message_queue (dispatch schedule)"
+    - "lead_responses (classified responses)"
+  handoff_packages:
+    - "lead_profile + context_summary + response + qualification_score → sales-closer"
+  reports:
+    - "Daily pipeline report (LH_AT_005)"
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# AGENT ASSIGNMENTS BY PHASE
+# ═══════════════════════════════════════════════════════════════════════════════
+agents_by_phase:
+  PHASE-1:
+    primary:
+      - "lead-qualifier"
+    secondary:
+      - "hunter-chief"
+  PHASE-2:
+    primary:
+      - "google-maps-hunter"
+    secondary:
+      - "database-manager"
+  PHASE-3:
+    primary:
+      - "context-analyst"
+    secondary:
+      - "database-manager"
+  PHASE-4:
+    primary:
+      - "message-crafter"
+    secondary:
+      - "database-manager"
+  PHASE-5:
+    primary:
+      - "scheduler"
+    secondary:
+      - "database-manager"
+  PHASE-6:
+    primary:
+      - "hunter-chief"
+    secondary:
+      - "database-manager"
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# QUALITY CHECKLIST
+# ═══════════════════════════════════════════════════════════════════════════════
+quality_checklist:
+  ICP_Definition:
+    - "[ ] ICP criteria cover min 3 dimensions"
+    - "[ ] Scoring threshold defined (>= 21/30)"
+    - "[ ] Search query validated"
+  Lead_Capture:
+    - "[ ] All leads have phone number"
+    - "[ ] Duplicates removed"
+    - "[ ] Leads saved to Supabase"
+  Context_Extraction:
+    - "[ ] >= 80% extraction rate"
+    - "[ ] Pain points identified per lead"
+    - "[ ] Failed extractions retried"
+  Message_Crafting:
+    - "[ ] Personalization >= 7/10"
+    - "[ ] Context referenced in each message"
+    - "[ ] Messages queued for dispatch"
+  Dispatch:
+    - "[ ] Within 9h-17h BRT"
+    - "[ ] Rate limits respected"
+    - "[ ] Random delays applied"
+  Response_Monitoring:
+    - "[ ] Responses classified within 2h"
+    - "[ ] Positive leads handed off"
+    - "[ ] Non-responders archived after 24h"
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# GOVERNANCE GATE
+# ═══════════════════════════════════════════════════════════════════════════════
+governance_gate:
+  protocol: "squads/squad-creator/protocols/ai-first-governance.md"
+  required_checks:
+    - "Rate limits enforced (anti-spam)"
+    - "Business hours respected (anti-harassment)"
+    - "Lead consent tracked"
+    - "Data retention policies applied"
+
+  ci_policy:
+    blocking_deterministic_only: true
+    deterministic_checks:
+      - "Rate limit configuration present"
+      - "Time window configuration present"
+      - "Supabase schema deployed"
+    semantic_checks_enforced_in_workflow: true
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# METADATA
+# ═══════════════════════════════════════════════════════════════════════════════
+metadata:
+  version: "1.0.0"
+  framework: "AIOS Workflow Standard v2"
+  created: "2026-02-19"
+  primary_use_case: "Automated lead generation from Google Maps with WhatsApp outreach"
+  squad: "lead-hunter"
+  handoff_to: "sales-closer (wf-sales-conversation)"

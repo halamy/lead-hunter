@@ -1,0 +1,19 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(node:*)",
+      "Bash(gh auth:*)",
+      "Bash(curl:*)",
+      "Bash(/Users/halamyrodrigo/bin/supabase projects:*)",
+      "Bash(/Users/halamyrodrigo/bin/supabase orgs:*)",
+      "Bash(PGPASSWORD='Manu180918@!preselles' psql:*)",
+      "Bash(python3:*)",
+      "Bash(find:*)",
+      "Bash(cd:*)",
+      "Bash(pip3 install:*)",
+      "Bash(git commit:*)",
+      "Bash(gh repo:*)",
+      "Bash(git init:*)"
+    ]
+  }
+}

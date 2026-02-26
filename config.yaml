@@ -1,0 +1,133 @@
+# Lead Hunter Squad Configuration
+
+squad:
+  name: "lead-hunter"
+  title: "Lead Hunter Squad"
+  version: "1.0.0"
+  author: "Metano[IA]"
+  description: "Automated lead generation from Google Maps with WhatsApp outreach"
+
+agents:
+  orchestrator:
+    - hunter-chief
+
+  tier_0:
+    - lead-qualifier
+
+  tier_1:
+    - google-maps-hunter
+    - message-crafter
+
+  tier_2:
+    - context-analyst
+    - database-manager
+    - scheduler
+
+frameworks:
+  - name: "Predictable Revenue"
+    source: "Aaron Ross"
+    application: "Lead generation process"
+
+  - name: "Fanatical Prospecting"
+    source: "Jeb Blount"
+    application: "Multi-channel approach"
+
+  - name: "$100M Offers - Value Equation"
+    source: "Alex Hormozi"
+    application: "Message personalization"
+
+  - name: "Direct Response Copywriting"
+    source: "Gary Halbert"
+    application: "Cold message crafting"
+
+  - name: "Sales Development Playbook"
+    source: "Trish Bertuzzi"
+    application: "Lead qualification"
+
+supabase:
+  enabled: true
+  tables:
+    - leads
+    - lead_context
+    - messages
+    - lead_responses
+    - message_queue
+    - archived_leads
+    - retry_queue
+
+checklists:
+  - lead-qualification-checklist     # Phase 1: ICP validation
+  - message-quality-checklist        # Phase 4: Message crafting
+  - dispatch-safety-checklist        # Phase 5: Before sending
+  - pipeline-health-checklist        # Daily: Pipeline health
+  - handoff-readiness-checklist      # Phase 6: Before sales-closer
+
+templates:
+  - cold-message-template            # WhatsApp message variations
+  - icp-definition-template          # ICP card structure
+  - handoff-package-template         # Sales-closer handoff
+  - pipeline-report-template         # Daily report format
+
+automation:
+  time_window:
+    start: "09:00:00"
+    end: "17:00:00"
+    timezone: "America/Sao_Paulo"
+
+  rate_limiting:
+    max_per_hour: 30
+    max_per_day: 200
+
+  randomization:
+    delay_min_seconds: 30
+    delay_max_seconds: 180
+
+handoff:
+  next_squad: "sales-closer"
+  trigger: "lead_responded == true AND sentiment == positive"
+  template: "templates/handoff-package-template.md"
+  checklist: "checklists/handoff-readiness-checklist.md"
+  data_package:
+    required:
+      - lead_profile
+      - context_summary
+      - conversation_history
+      - qualification_score
+    optional:
+      - recommended_approach
+      - hot_buttons
+      - urgency_signals
+
+auto_triggers:
+  - id: LH_AT_001
+    name: "WhatsApp Response Monitor"
+    mechanism: "webhook + cron 15min"
+    owner: hunter-chief
+  - id: LH_AT_002
+    name: "Context Extraction Auto-Retry"
+    mechanism: "event-driven (max 3 attempts)"
+    owner: context-analyst
+  - id: LH_AT_003
+    name: "Data Quality Review Queue"
+    mechanism: "flag-based"
+    owner: database-manager
+  - id: LH_AT_004
+    name: "Archive Non-Responders"
+    mechanism: "cron 23:00 BRT"
+    owner: database-manager
+  - id: LH_AT_005
+    name: "Daily Pipeline Report"
+    mechanism: "cron 17:00 BRT"
+    owner: hunter-chief
+  - id: LH_AT_006
+    name: "Process Retry Queue"
+    mechanism: "cron 08:00 BRT"
+    owner: database-manager
+  - id: LH_AT_007
+    name: "Cleanup Failed Retries"
+    mechanism: "cron 23:30 BRT"
+    owner: database-manager
+  - id: LH_AT_008
+    name: "Handoff Trigger"
+    mechanism: "event-driven (positive sentiment)"
+    owner: hunter-chief
